@@ -243,7 +243,8 @@ void loop() {
       delay(5);
     }
     raw /= 10;
-    aqi = map(raw, 0, 4095, 0, 500);
+    raw = constrain(raw, 1900, 4095);
+    aqi = map(raw, 1900, 4095, 0, 500);
     aqi = constrain(aqi, 0, 500);
 
     adicionarHistorico(temperatura, umidade, aqi);
