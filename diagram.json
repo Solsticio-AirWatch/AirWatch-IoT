@@ -4,13 +4,13 @@
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -160, "left": -180, "attrs": {} },
-    { "type": "wokwi-dht22", "id": "dht", "top": -326.1, "left": -379.8, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht", "top": -326.1, "left": -379.8, "attrs": { "temperature": "25", "humidity": "60" } },
     {
       "type": "wokwi-potentiometer",
       "id": "pot",
       "top": -246.1,
       "left": -379.8,
-      "attrs": { "value": "0.5" }
+      "attrs": { "value": "0" }
     },
     {
       "type": "wokwi-lcd1602",
