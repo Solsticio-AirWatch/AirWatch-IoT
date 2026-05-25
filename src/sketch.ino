@@ -24,12 +24,11 @@ const char* MQTT_TOPIC  = "airwatch/sensor/001";
 #define LEDC_RES   8
 
 void buzzerBeep(int freq, int durMs) {
-  ledcSetup(LEDC_CANAL, freq, LEDC_RES);
-  ledcAttachPin(PIN_BUZZER, LEDC_CANAL);
+  ledcAttach(PIN_BUZZER, freq, LEDC_RES);
   ledcWrite(LEDC_CANAL, 128);
   delay(durMs);
   ledcWrite(LEDC_CANAL, 0);
-  ledcDetachPin(PIN_BUZZER);
+  ledcDetach(PIN_BUZZER);
 }
 
 #define HISTORICO_TAM 10
@@ -51,14 +50,14 @@ void adicionarHistorico(float temp, float umi, int aqiVal) {
   if (totalLeituras < HISTORICO_TAM) totalLeituras++;
 }
 
-DHT              dht(PIN_DHT, DHTTYPE);
+DHT               dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-WebServer        server(80);
-WiFiClient       wifiClient;
-PubSubClient     mqttClient(wifiClient);
+WebServer         server(80);
+WiFiClient        wifiClient;
+PubSubClient      mqttClient(wifiClient);
 
-float temperatura = 0;
-float umidade     = 0;
+float temperatura = 25.0;
+float umidade     = 60.0;
 int   aqi         = 0;
 
 unsigned long ultimaLeitura = 0;
@@ -107,7 +106,7 @@ void handleRoot() {
   html += "<div class='valor'>" + String(umidade, 0) + " %</div></div>";
   html += "<div class='card'><div class='label'>Indice de Qualidade do Ar (AQI)</div>";
   html += "<div class='valor'>" + String(aqi) + "</div>";
-  html += "<div class='faixa' style='background:" + faixaCor + "'>" + faixaCor + "'>" + faixaTexto + "</div></div>";
+  html += "<div class='faixa' style='background:" + faixaCor + "'>" + faixaTexto + "</div></div>";
   html += "<div class='links'>";
   html += "<a href='/api/atual'>JSON atual</a> | ";
   html += "<a href='/api/historico'>Historico</a> | ";
