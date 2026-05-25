@@ -14,6 +14,7 @@ const char* PASSWORD = "";
 #define LED_AMARELO 26
 #define LED_VERMELHO 27
 #define BUZZER 13
+#define HISTORICO_TAM 5
 
 DHT dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -23,6 +24,21 @@ float temperatura = 0;
 float umidade = 0;
 int aqi = 0;
 unsigned long ultimaLeitura = 0;
+unsigned long inicio = 0;
+int totalLeituras = 0;
+
+struct Leitura {
+  unsigned long timestamp;
+  int aqi;
+};
+Leitura historico[HISTORICO_TAM];
+int idxHistorico = 0;
+
+void adicionarHistorico(int valor) {
+  historico[idxHistorico].timestamp = millis();
+  historico[idxHistorico].aqi = valor;
+  idxHistorico = (idxHistorico + 1) % HISTORICO_TAM;
+}
 
 void handleRoot() {
   String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='5'>";
@@ -33,7 +49,7 @@ void handleRoot() {
   html += "<p>Temperatura: " + String(temperatura, 1) + " &deg;C</p>";
   html += "<p>Umidade: " + String(umidade, 0) + " %</p>";
   html += "<p>Índice de qualidade (AQI): " + String(aqi) + "</p>";
-  html += "<p><a href='/api/atual'>Ver JSON atual</a></p>";
+  html += "<p><a href='/api/atual'>JSON atual</a> | <a href='/api/historico'>JSON histórico</a> | <a href='/api/status'>JSON status</a></p>";
   html += "</body></html>";
   server.send(200, "text/html", html);
 }
@@ -47,8 +63,34 @@ void handleApiAtual() {
   server.send(200, "application/json", json);
 }
 
+void handleApiHistorico() {
+  String json = "[";
+  for (int i = 0; i < HISTORICO_TAM; i++) {
+    if (historico[i].aqi == 0 && historico[i].timestamp == 0 && i > 0) {
+      continue;
+    }
+    if (i > 0 && (historico[i-1].aqi != 0 || historico[i-1].timestamp != 0)) json += ",";
+    json += "{\"timestamp\":" + String(historico[i].timestamp) + ",\"aqi\":" + String(historico[i].aqi) + "}";
+  }
+  json += "]";
+  server.send(200, "application/json", json);
+}
+
+void handleApiStatus() {
+  long rssi = WiFi.RSSI();
+  unsigned long uptime = millis() / 1000;
+  String json = "{";
+  json += "\"status\":\"online\",";
+  json += "\"wifi_rssi\":" + String(rssi) + ",";
+  json += "\"uptime_segundos\":" + String(uptime) + ",";
+  json += "\"total_leituras\":" + String(totalLeituras);
+  json += "}";
+  server.send(200, "application/json", json);
+}
+
 void setup() {
   Serial.begin(115200);
+  inicio = millis();
   dht.begin();
   lcd.init();
   lcd.backlight();
@@ -87,6 +129,8 @@ void setup() {
 
   server.on("/", handleRoot);
   server.on("/api/atual", handleApiAtual);
+  server.on("/api/historico", handleApiHistorico);
+  server.on("/api/status", handleApiStatus);
   server.begin();
   Serial.println("Servidor web iniciado");
 }
@@ -104,6 +148,9 @@ void loop() {
     aqi = map(raw, 0, 4095, 0, 500);
     if (aqi < 0) aqi = 0;
     if (aqi > 500) aqi = 500;
+
+    adicionarHistorico(aqi);
+    totalLeituras++;
 
     lcd.clear();
     lcd.setCursor(0, 0);
