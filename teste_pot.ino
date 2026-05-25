@@ -1,6 +1,6 @@
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  pinMode(2, OUTPUT);
   Serial.println("Teste do potenciometro no pino 34");
 }
 
@@ -11,5 +11,6 @@ void loop() {
   Serial.print(raw);
   Serial.print("  AQI: ");
   Serial.println(aqi);
+  digitalWrite(2, !digitalRead(2));
   delay(500);
 }
