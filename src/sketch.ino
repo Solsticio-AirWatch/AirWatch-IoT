@@ -107,7 +107,7 @@ void handleRoot() {
   html += "<div class='valor'>" + String(umidade, 0) + " %</div></div>";
   html += "<div class='card'><div class='label'>Indice de Qualidade do Ar (AQI)</div>";
   html += "<div class='valor'>" + String(aqi) + "</div>";
-  html += "<div class='faixa' style='background:" + faixaCor + "'>" + faixaTexto + "</div></div>";
+  html += "<div class='faixa' style='background:" + faixaCor + "'>" + faixaCor + "'>" + faixaTexto + "</div></div>";
   html += "<div class='links'>";
   html += "<a href='/api/atual'>JSON atual</a> | ";
   html += "<a href='/api/historico'>Historico</a> | ";
@@ -166,7 +166,12 @@ void setup() {
   Serial.begin(115200);
 
   pinMode(PIN_DHT, INPUT_PULLUP);
+  delay(2000);
   dht.begin();
+  delay(2000);
+  dht.readTemperature();
+  dht.readHumidity();
+
   Wire.begin();
   lcd.init();
   lcd.backlight();
@@ -233,7 +238,12 @@ void loop() {
     if (!isnan(t)) temperatura = t;
     if (!isnan(h)) umidade     = h;
 
-    int raw = analogRead(PIN_MQ135);
+    int raw = 0;
+    for (int i = 0; i < 10; i++) {
+      raw += analogRead(PIN_MQ135);
+      delay(5);
+    }
+    raw /= 10;
     aqi = map(raw, 0, 4095, 0, 500);
     aqi = constrain(aqi, 0, 500);
 
