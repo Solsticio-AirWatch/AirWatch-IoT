@@ -9,6 +9,10 @@ const char* PASSWORD = "";
 #define PIN_DHT 4
 #define DHTTYPE DHT22
 #define PIN_MQ135 34
+#define LED_VERDE 25
+#define LED_AMARELO 26
+#define LED_VERMELHO 27
+#define BUZZER 13
 
 DHT dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -28,6 +32,15 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Iniciando...");
   delay(2000);
+
+  pinMode(LED_VERDE, OUTPUT);
+  pinMode(LED_AMARELO, OUTPUT);
+  pinMode(LED_VERMELHO, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  digitalWrite(LED_VERDE, LOW);
+  digitalWrite(LED_AMARELO, LOW);
+  digitalWrite(LED_VERMELHO, LOW);
+  noTone(BUZZER);
 
   WiFi.begin(SSID, PASSWORD, 6);
   Serial.print("Conectando WiFi");
@@ -70,6 +83,23 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print("AQI:");
     lcd.print(aqi);
+
+    if (aqi <= 100) {
+      digitalWrite(LED_VERDE, HIGH);
+      digitalWrite(LED_AMARELO, LOW);
+      digitalWrite(LED_VERMELHO, LOW);
+      noTone(BUZZER);
+    } else if (aqi <= 200) {
+      digitalWrite(LED_VERDE, HIGH);
+      digitalWrite(LED_AMARELO, HIGH);
+      digitalWrite(LED_VERMELHO, LOW);
+      noTone(BUZZER);
+    } else {
+      digitalWrite(LED_VERDE, LOW);
+      digitalWrite(LED_AMARELO, LOW);
+      digitalWrite(LED_VERMELHO, HIGH);
+      tone(BUZZER, 2000);
+    }
 
     ultimaLeitura = millis();
   }
