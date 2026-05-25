@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <WebServer.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
@@ -16,11 +17,35 @@ const char* PASSWORD = "";
 
 DHT dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+WebServer server(80);
 
 float temperatura = 0;
 float umidade = 0;
 int aqi = 0;
 unsigned long ultimaLeitura = 0;
+
+void handleRoot() {
+  String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='5'>";
+  html += "<title>AirWatch IoT</title>";
+  html += "<style>body{font-family:Arial;text-align:center;margin-top:50px;}</style>";
+  html += "</head><body>";
+  html += "<h1>AirWatch - Qualidade do Ar</h1>";
+  html += "<p>Temperatura: " + String(temperatura, 1) + " &deg;C</p>";
+  html += "<p>Umidade: " + String(umidade, 0) + " %</p>";
+  html += "<p>Índice de qualidade (AQI): " + String(aqi) + "</p>";
+  html += "<p><a href='/api/atual'>Ver JSON atual</a></p>";
+  html += "</body></html>";
+  server.send(200, "text/html", html);
+}
+
+void handleApiAtual() {
+  String json = "{";
+  json += "\"temperatura\":" + String(temperatura, 1) + ",";
+  json += "\"umidade\":" + String(umidade, 0) + ",";
+  json += "\"aqi\":" + String(aqi);
+  json += "}";
+  server.send(200, "application/json", json);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -59,9 +84,16 @@ void setup() {
   lcd.print(WiFi.localIP());
   delay(3000);
   lcd.clear();
+
+  server.on("/", handleRoot);
+  server.on("/api/atual", handleApiAtual);
+  server.begin();
+  Serial.println("Servidor web iniciado");
 }
 
 void loop() {
+  server.handleClient();
+
   if (millis() - ultimaLeitura >= 5000) {
     temperatura = dht.readTemperature();
     umidade = dht.readHumidity();
