@@ -10,7 +10,7 @@
       "id": "pot",
       "top": -246.1,
       "left": -379.8,
-      "attrs": { "value": "0" }
+      "attrs": { "value": "0.01" }
     },
     {
       "type": "wokwi-lcd1602",
@@ -61,12 +61,21 @@
       "top": 114.4,
       "left": -340.2,
       "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r4",
+      "top": -326.1,
+      "left": -280,
+      "attrs": { "value": "10000" }
     }
   ],
   "connections": [
     [ "esp:GND.1", "dht:GND", "black", [ "h-16.61", "v-22.4", "h-144" ] ],
     [ "esp:4", "dht:DATA", "green", [] ],
     [ "esp:3V3", "dht:VCC", "purple", [ "v-12.8", "h-189.41", "v-67.2" ] ],
+    [ "dht:DATA", "r4:1", "orange", [] ],
+    [ "r4:2", "esp:3V3", "orange", [] ],
     [ "esp:34", "pot:OUT", "yellow", [] ],
     [ "esp:GND.2", "pot:GND", "cyan", [ "v-32", "h-271.56" ] ],
     [ "esp:3V3", "pot:VCC", "gold", [ "h-151.01", "v-3.2", "h-4.4" ] ],
