@@ -83,9 +83,9 @@ void tentarReconectarMQTT() {
 
 void handleRoot() {
   String faixaTexto, faixaCor;
-  if      (aqi <= 100) { faixaTexto = "Boa";      faixaCor = "#27ae60"; }
-  else if (aqi <= 200) { faixaTexto = "Moderada";  faixaCor = "#f39c12"; }
-  else                 { faixaTexto = "Ruim";       faixaCor = "#e74c3c"; }
+  if      (aqi <= 100) { faixaTexto = "Boa";     faixaCor = "#27ae60"; }
+  else if (aqi <= 200) { faixaTexto = "Moderada"; faixaCor = "#f39c12"; }
+  else                 { faixaTexto = "Ruim";      faixaCor = "#e74c3c"; }
 
   String html = "<!DOCTYPE html><html lang='pt-BR'><head>";
   html += "<meta charset='UTF-8'><meta http-equiv='refresh' content='5'>";
@@ -165,6 +165,7 @@ void handleApiStatus() {
 void setup() {
   Serial.begin(115200);
 
+  pinMode(PIN_DHT, INPUT_PULLUP);
   dht.begin();
   Wire.begin();
   lcd.init();
