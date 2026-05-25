@@ -3,9 +3,14 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <DHT.h>
+#include <PubSubClient.h>
 
 const char* SSID = "Wokwi-GUEST";
 const char* PASSWORD = "";
+
+const char* MQTT_BROKER = "broker.hivemq.com";
+const int MQTT_PORT = 1883;
+const char* MQTT_TOPIC = "airwatch/sensor/001";
 
 #define PIN_DHT 4
 #define DHTTYPE DHT22
@@ -19,6 +24,8 @@ const char* PASSWORD = "";
 DHT dht(PIN_DHT, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 WebServer server(80);
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
 
 float temperatura = 0;
 float umidade = 0;
@@ -38,6 +45,20 @@ void adicionarHistorico(int valor) {
   historico[idxHistorico].timestamp = millis();
   historico[idxHistorico].aqi = valor;
   idxHistorico = (idxHistorico + 1) % HISTORICO_TAM;
+}
+
+void reconnectMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Conectando ao MQTT...");
+    if (mqttClient.connect("ESP32_AirWatch")) {
+      Serial.println("conectado");
+    } else {
+      Serial.print("falhou, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" tentando novamente em 5 segundos");
+      delay(5000);
+    }
+  }
 }
 
 void handleRoot() {
@@ -66,9 +87,7 @@ void handleApiAtual() {
 void handleApiHistorico() {
   String json = "[";
   for (int i = 0; i < HISTORICO_TAM; i++) {
-    if (historico[i].aqi == 0 && historico[i].timestamp == 0 && i > 0) {
-      continue;
-    }
+    if (historico[i].aqi == 0 && historico[i].timestamp == 0 && i > 0) continue;
     if (i > 0 && (historico[i-1].aqi != 0 || historico[i-1].timestamp != 0)) json += ",";
     json += "{\"timestamp\":" + String(historico[i].timestamp) + ",\"aqi\":" + String(historico[i].aqi) + "}";
   }
@@ -119,6 +138,8 @@ void setup() {
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
 
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("WiFi OK");
@@ -137,6 +158,10 @@ void setup() {
 
 void loop() {
   server.handleClient();
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+  mqttClient.loop();
 
   if (millis() - ultimaLeitura >= 5000) {
     temperatura = dht.readTemperature();
@@ -151,6 +176,15 @@ void loop() {
 
     adicionarHistorico(aqi);
     totalLeituras++;
+
+    String payload = "{";
+    payload += "\"temperatura\":" + String(temperatura, 1) + ",";
+    payload += "\"umidade\":" + String(umidade, 0) + ",";
+    payload += "\"aqi\":" + String(aqi);
+    payload += "}";
+    mqttClient.publish(MQTT_TOPIC, payload.c_str());
+    Serial.print("MQTT publicado: ");
+    Serial.println(payload);
 
     lcd.clear();
     lcd.setCursor(0, 0);
