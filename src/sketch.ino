@@ -33,6 +33,7 @@ int aqi = 0;
 unsigned long ultimaLeitura = 0;
 unsigned long inicio = 0;
 int totalLeituras = 0;
+bool alertaSoando = false;
 
 struct Leitura {
   unsigned long timestamp;
@@ -127,6 +128,7 @@ void setup() {
   digitalWrite(LED_AMARELO, LOW);
   digitalWrite(LED_VERMELHO, LOW);
   noTone(BUZZER);
+  alertaSoando = false;
 
   WiFi.begin(SSID, PASSWORD, 6);
   Serial.print("Conectando WiFi");
@@ -196,22 +198,32 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print("AQI:");
     lcd.print(aqi);
+    lcd.print("    ");
 
     if (aqi <= 100) {
       digitalWrite(LED_VERDE, HIGH);
       digitalWrite(LED_AMARELO, LOW);
       digitalWrite(LED_VERMELHO, LOW);
-      noTone(BUZZER);
+      if (alertaSoando) {
+        noTone(BUZZER);
+        alertaSoando = false;
+      }
     } else if (aqi <= 200) {
       digitalWrite(LED_VERDE, HIGH);
       digitalWrite(LED_AMARELO, HIGH);
       digitalWrite(LED_VERMELHO, LOW);
-      noTone(BUZZER);
+      if (alertaSoando) {
+        noTone(BUZZER);
+        alertaSoando = false;
+      }
     } else {
       digitalWrite(LED_VERDE, LOW);
       digitalWrite(LED_AMARELO, LOW);
       digitalWrite(LED_VERMELHO, HIGH);
-      tone(BUZZER, 2000);
+      if (!alertaSoando) {
+        tone(BUZZER, 2000, 200);
+        alertaSoando = true;
+      }
     }
 
     ultimaLeitura = millis();
