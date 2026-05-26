@@ -36,3 +36,38 @@ Leitura leituraAtual  = { 0, "AGUARDANDO", "--" };
 Leitura historico[10];
 int     totalLeituras = 0;
 unsigned long ultimaLeitura = 0;
+
+String getTimestamp() {
+  unsigned long s = millis() / 1000;
+  unsigned long h = s / 3600;
+  unsigned long m = (s % 3600) / 60;
+  unsigned long seg = s % 60;
+  char buf[12];
+  snprintf(buf, sizeof(buf), "%02lu:%02lu:%02lu", h, m, seg);
+  return String(buf);
+}
+
+void atualizarLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("AQI: ");
+  lcd.print(leituraAtual.aqi);
+  lcd.setCursor(0, 1);
+  lcd.print(leituraAtual.status);
+}
+
+void atualizarSaidas() {
+  digitalWrite(LED_VERDE,    LOW);
+  digitalWrite(LED_AMARELO,  LOW);
+  digitalWrite(LED_VERMELHO, LOW);
+  digitalWrite(BUZZER,       LOW);
+
+  if (leituraAtual.aqi <= 50) {
+    digitalWrite(LED_VERDE, HIGH);
+  } else if (leituraAtual.aqi <= 150) {
+    digitalWrite(LED_AMARELO, HIGH);
+  } else {
+    digitalWrite(LED_VERMELHO, HIGH);
+    digitalWrite(BUZZER, HIGH);
+  }
+}
