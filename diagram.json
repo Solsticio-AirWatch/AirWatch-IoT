@@ -4,87 +4,29 @@
   "editor": "wokwi",
   "parts": [
     { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -160, "left": -180, "attrs": {} },
-    { "type": "wokwi-dht22", "id": "dht", "top": -326.1, "left": -379.8, "attrs": { "temperature": "25", "humidity": "60" } },
-    {
-      "type": "wokwi-potentiometer",
-      "id": "pot",
-      "top": -246.1,
-      "left": -379.8,
-      "attrs": { "value": "0.01" }
-    },
-    {
-      "type": "wokwi-lcd1602",
-      "id": "lcd",
-      "top": -252.8,
-      "left": 5.6,
-      "attrs": { "pins": "i2c" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_verde",
-      "top": 4.4,
-      "left": -380.2,
-      "attrs": { "color": "limegreen" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_amarelo",
-      "top": 44.4,
-      "left": -380.2,
-      "attrs": { "color": "yellow" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_vermelho",
-      "top": 84.4,
-      "left": -380.2,
-      "attrs": { "color": "red" }
-    },
-    { "type": "wokwi-buzzer", "id": "buzzer", "top": 156, "left": -391.8, "attrs": {} },
-    {
-      "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 34.4,
-      "left": -340.2,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r2",
-      "top": 74.4,
-      "left": -340.2,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r3",
-      "top": 114.4,
-      "left": -340.2,
-      "attrs": { "value": "220" }
-    }
+    { "type": "wokwi-pushbutton", "id": "btn_bom", "top": -120, "left": -300, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "btn_ruim", "top": -120, "left": -200, "attrs": {} },
+    { "type": "wokwi-led", "id": "led_verde", "top": -40, "left": -300, "attrs": { "color": "limegreen" } },
+    { "type": "wokwi-led", "id": "led_vermelho", "top": -40, "left": -200, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": -10, "left": -300, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": -10, "left": -200, "attrs": { "value": "220" } },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": -200, "left": -50, "attrs": { "pins": "i2c" } }
   ],
   "connections": [
-    [ "esp:GND.1", "dht:GND", "black", [ "h-16.61", "v-22.4", "h-144" ] ],
-    [ "esp:4", "dht:DATA", "green", [] ],
-    [ "esp:3V3", "dht:VCC", "purple", [ "v-12.8", "h-189.41", "v-67.2" ] ],
-    [ "esp:34", "pot:OUT", "yellow", [] ],
-    [ "esp:GND.2", "pot:GND", "cyan", [ "v-32", "h-271.56" ] ],
-    [ "esp:3V3", "pot:VCC", "gold", [ "h-151.01", "v-3.2", "h-4.4" ] ],
-    [ "lcd:GND", "esp:GND.3", "yellow", [ "h-28.8", "v147.2" ] ],
+    [ "btn_bom:1.l", "esp:18", "green", [] ],
+    [ "btn_bom:2.l", "esp:GND", "black", [] ],
+    [ "btn_ruim:1.l", "esp:19", "yellow", [] ],
+    [ "btn_ruim:2.l", "esp:GND", "black", [] ],
+    [ "esp:25", "r1:1", "violet", [] ],
+    [ "r1:2", "led_verde:A", "gold", [] ],
+    [ "led_verde:C", "esp:GND", "black", [] ],
+    [ "esp:27", "r2:1", "cyan", [] ],
+    [ "r2:2", "led_vermelho:A", "orange", [] ],
+    [ "led_vermelho:C", "esp:GND", "black", [] ],
+    [ "lcd:GND", "esp:GND", "yellow", [] ],
     [ "lcd:VCC", "esp:3V3", "red", [] ],
-    [ "esp:21", "lcd:SDA", "green", [ "h69.64", "v-118.6" ] ],
-    [ "esp:22", "lcd:SCL", "cyan", [ "h79.24", "v-80.3" ] ],
-    [ "esp:GND.1", "led_verde:C", "purple", [ "h-7.01", "v-12.8", "h-192", "v65.6" ] ],
-    [ "led_verde:A", "r1:1", "gold", [] ],
-    [ "esp:25", "r1:2", "violet", [ "h-64.61", "v94.45" ] ],
-    [ "esp:GND.1", "led_amarelo:C", "limegreen", [ "v-3.2", "h-218.21", "v96" ] ],
-    [ "led_amarelo:A", "r2:1", "blue", [] ],
-    [ "esp:26", "r2:2", "green", [ "h-45.41", "v124.85" ] ],
-    [ "esp:GND.1", "led_vermelho:C", "brown", [ "h-227.81", "v132.8" ] ],
-    [ "led_vermelho:A", "r3:1", "orange", [] ],
-    [ "esp:27", "r3:2", "cyan", [ "h-26.21", "v155.25" ] ],
-    [ "esp:13", "buzzer:1", "pink", [ "h-237.41", "v205.2" ] ],
-    [ "buzzer:2", "esp:GND.1", "gray", [ "h160.8", "v-240", "h11.6", "v-6.4" ] ]
+    [ "esp:21", "lcd:SDA", "green", [] ],
+    [ "esp:22", "lcd:SCL", "cyan", [] ]
   ],
   "dependencies": {}
 }
