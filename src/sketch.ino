@@ -24,11 +24,12 @@ const char* MQTT_TOPIC  = "airwatch/sensor/001";
 #define LEDC_RES   8
 
 void buzzerBeep(int freq, int durMs) {
-  ledcAttach(PIN_BUZZER, freq, LEDC_RES);
+  ledcSetup(LEDC_CANAL, freq, LEDC_RES);
+  ledcAttachPin(PIN_BUZZER, LEDC_CANAL);
   ledcWrite(LEDC_CANAL, 128);
   delay(durMs);
   ledcWrite(LEDC_CANAL, 0);
-  ledcDetach(PIN_BUZZER);
+  ledcDetachPin(PIN_BUZZER);
 }
 
 #define HISTORICO_TAM 10
