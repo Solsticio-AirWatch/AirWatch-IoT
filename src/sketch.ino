@@ -396,3 +396,68 @@ void handleDashboard() {
 
   server.send(200, "text/html", html);
 }
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BTN_BOM,      INPUT_PULLUP);
+  pinMode(BTN_MODERADO, INPUT_PULLUP);
+  pinMode(BTN_RUIM,     INPUT_PULLUP);
+  pinMode(LED_VERDE,    OUTPUT);
+  pinMode(LED_AMARELO,  OUTPUT);
+  pinMode(LED_VERMELHO, OUTPUT);
+  pinMode(BUZZER,       OUTPUT);
+
+  Wire.begin(21, 22);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("AirWatch v1.0");
+  lcd.setCursor(0, 1);
+  lcd.print("Conectando...");
+
+  Serial.print("[WiFi] Conectando");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n[WiFi] Conectado! IP: " + WiFi.localIP().toString());
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("WiFi OK!");
+  lcd.setCursor(0, 1);
+  lcd.print(WiFi.localIP().toString());
+  delay(2000);
+
+  mqtt.setServer(MQTT_BROKER, MQTT_PORT);
+  conectarMQTT();
+
+  server.on("/",              handleDashboard);
+  server.on("/leitura/atual", handleLeituraAtual);
+  server.on("/historico",     handleHistorico);
+  server.on("/status",        handleStatus);
+  server.begin();
+  Serial.println("[HTTP] Servidor iniciado");
+
+  atualizarLCD();
+}
+
+void loop() {
+  server.handleClient();
+  mqtt.loop();
+
+  if (millis() - ultimaLeitura < 500) return;
+
+  if (digitalRead(BTN_BOM) == LOW) {
+    ultimaLeitura = millis();
+    registrarLeitura(30, "BOM");
+  } else if (digitalRead(BTN_MODERADO) == LOW) {
+    ultimaLeitura = millis();
+    registrarLeitura(120, "MODERADO");
+  } else if (digitalRead(BTN_RUIM) == LOW) {
+    ultimaLeitura = millis();
+    registrarLeitura(250, "RUIM");
+  }
+}
