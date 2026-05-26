@@ -71,3 +71,47 @@ void atualizarSaidas() {
     digitalWrite(BUZZER, HIGH);
   }
 }
+
+void conectarMQTT() {
+  if (mqtt.connected()) return;
+  Serial.print("[MQTT] Conectando...");
+  if (mqtt.connect(MQTT_CLIENT)) {
+    Serial.println(" OK");
+  } else {
+    Serial.print(" Falhou, rc=");
+    Serial.println(mqtt.state());
+  }
+}
+
+void publicarMQTT() {
+  if (!mqtt.connected()) conectarMQTT();
+
+  StaticJsonDocument<128> doc;
+  doc["aqi"]       = leituraAtual.aqi;
+  doc["status"]    = leituraAtual.status;
+  doc["timestamp"] = leituraAtual.timestamp;
+
+  char payload[128];
+  serializeJson(doc, payload);
+  mqtt.publish(MQTT_TOPIC, payload);
+  Serial.print("[MQTT] Publicado: ");
+  Serial.println(payload);
+}
+
+void registrarLeitura(int aqi, const String& status) {
+  leituraAtual.aqi       = aqi;
+  leituraAtual.status    = status;
+  leituraAtual.timestamp = getTimestamp();
+
+  historico[totalLeituras % 10] = leituraAtual;
+  totalLeituras++;
+
+  atualizarSaidas();
+  atualizarLCD();
+  publicarMQTT();
+
+  Serial.printf("[SENSOR] AQI=%d | %s | %s\n",
+    leituraAtual.aqi,
+    leituraAtual.status.c_str(),
+    leituraAtual.timestamp.c_str());
+}
