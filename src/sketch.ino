@@ -165,12 +165,21 @@ void handleApiStatus() {
 void setup() {
   Serial.begin(115200);
 
-  pinMode(PIN_DHT, INPUT_PULLUP);
-  delay(2000);
+  // Inicializa DHT22 sem pull-up interno
   dht.begin();
-  delay(2000);
-  dht.readTemperature();
-  dht.readHumidity();
+  delay(1000);
+
+  // Leitura inicial para evitar valores zerados
+  for (int i = 0; i < 5; i++) {
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    if (!isnan(t) && !isnan(h)) {
+      temperatura = t;
+      umidade = h;
+      break;
+    }
+    delay(500);
+  }
 
   Wire.begin();
   lcd.init();
@@ -233,20 +242,39 @@ void loop() {
   if (millis() - ultimaLeitura >= INTERVALO_LEITURA) {
     ultimaLeitura = millis();
 
+    // Leitura DHT22 com retry
     float t = dht.readTemperature();
     float h = dht.readHumidity();
-    if (!isnan(t)) temperatura = t;
-    if (!isnan(h)) umidade     = h;
+    if (!isnan(t) && !isnan(h)) {
+      temperatura = t;
+      umidade = h;
+    } else {
+      // Tenta novamente até 3 vezes
+      for (int i = 0; i < 3; i++) {
+        delay(100);
+        t = dht.readTemperature();
+        h = dht.readHumidity();
+        if (!isnan(t) && !isnan(h)) {
+          temperatura = t;
+          umidade = h;
+          break;
+        }
+      }
+    }
 
-    int raw = 0;
+    // Leitura do potenciômetro (média de 10 amostras)
+    long soma = 0;
     for (int i = 0; i < 10; i++) {
-      raw += analogRead(PIN_MQ135);
+      soma += analogRead(PIN_MQ135);
       delay(5);
     }
-    raw /= 10;
-    Serial.printf("RAW ADC: %d\n", raw);
+    int raw = soma / 10;
+    // Mapeia 0-4095 para 0-500
     aqi = map(raw, 0, 4095, 0, 500);
     aqi = constrain(aqi, 0, 500);
+
+    // Depuração no Serial Monitor
+    Serial.printf("RAW: %d  AQI: %d  Temp: %.1f  Umid: %.0f\n", raw, aqi, temperatura, umidade);
 
     adicionarHistorico(temperatura, umidade, aqi);
 
@@ -257,9 +285,9 @@ void loop() {
       payload += "\"aqi\":"         + String(aqi);
       payload += "}";
       mqttClient.publish(MQTT_TOPIC, payload.c_str());
-      Serial.println("MQTT: " + payload);
     }
 
+    // Atualiza LCD
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("T:");
@@ -274,6 +302,7 @@ void loop() {
     else if (aqi <= 200) lcd.print(" MOD  ");
     else                 lcd.print(" RUIM ");
 
+    // Controle dos LEDs
     if (aqi <= 100) {
       digitalWrite(LED_VERDE,    HIGH);
       digitalWrite(LED_AMARELO,  LOW);
@@ -288,8 +317,5 @@ void loop() {
       digitalWrite(LED_VERMELHO, HIGH);
       buzzerBeep(2000, 200);
     }
-
-    Serial.printf("[%lums] T=%.1fC H=%.0f%% AQI=%d\n",
-                  millis(), temperatura, umidade, aqi);
   }
 }
