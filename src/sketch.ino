@@ -1,51 +1,59 @@
 // ─── Bibliotecas ─────────────────────────────────────────────────────────────
-#include <Wire.h>              // Comunicação I2C (LCD)
-#include <LiquidCrystal_I2C.h> // Controle do LCD 16x2 via I2C
-#include <WiFi.h>              // Conexão Wi-Fi do ESP32
-#include <PubSubClient.h>      // Cliente MQTT
-#include <WebServer.h>         // Servidor HTTP embutido no ESP32
-#include <ArduinoJson.h>       // Serialização e deserialização JSON
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <WebServer.h>
+#include <ArduinoJson.h>
 
 // ─── Pinagem ─────────────────────────────────────────────────────────────────
-#define BTN_BOM       12  // Botão verde — injeta leitura "Ar Bom"
-#define BTN_MODERADO  13  // Botão amarelo — injeta leitura "Ar Moderado"
-#define BTN_RUIM      14  // Botão vermelho — injeta leitura "Ar Ruim"
-#define LED_VERDE     25  // LED verde — indica qualidade boa
-#define LED_AMARELO   26  // LED amarelo — indica qualidade moderada
-#define LED_VERMELHO  27  // LED vermelho — indica qualidade ruim
-#define BUZZER        32  // Buzzer — alarme sonoro quando ar está ruim
+
+#define BTN_BOM       12
+#define BTN_MODERADO  13
+#define BTN_RUIM      14
+#define LED_VERDE     25
+#define LED_AMARELO   26
+#define LED_VERMELHO  27
+#define BUZZER        32
 
 // ─── Credenciais Wi-Fi ───────────────────────────────────────────────────────
-const char* WIFI_SSID     = "Wokwi-GUEST"; // SSID padrão do Wokwi (sem senha)
+
+const char* WIFI_SSID     = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
 
 // ─── Configuração MQTT ───────────────────────────────────────────────────────
-const char* MQTT_BROKER = "broker.hivemq.com"; // Broker público HiveMQ
-const int   MQTT_PORT   = 1883;                // Porta padrão MQTT
-const char* MQTT_TOPIC  = "airwatch/leitura";  // Tópico de publicação
-const char* MQTT_CLIENT = "airwatch-esp32-solsticio"; // ID único do cliente
+
+const char* MQTT_BROKER = "broker.hivemq.com";
+const int   MQTT_PORT   = 1883;
+const char* MQTT_TOPIC  = "airwatch/leitura";
+const char* MQTT_CLIENT = "airwatch-esp32-solsticio";
 
 // ─── Instâncias dos objetos ──────────────────────────────────────────────────
-LiquidCrystal_I2C lcd(0x27, 16, 2); // LCD no endereço I2C 0x27, 16 colunas, 2 linhas
-WiFiClient        wifiClient;        // Cliente TCP para o MQTT
-PubSubClient      mqtt(wifiClient);  // Cliente MQTT usando o WiFiClient
-WebServer         server(80);        // Servidor HTTP na porta 80
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+WiFiClient        wifiClient;
+PubSubClient      mqtt(wifiClient);
+WebServer         server(80);
 
 // ─── Estrutura de dados ──────────────────────────────────────────────────────
+
 struct Leitura {
-  int    aqi;       // Índice de Qualidade do Ar (AQI)
-  String status;    // Status textual: BOM, MODERADO ou RUIM
-  String timestamp; // Horário da leitura no formato HH:MM:SS
+  int    aqi;
+  String status;
+  String timestamp;
 };
 
 // ─── Estado global ───────────────────────────────────────────────────────────
-Leitura leituraAtual  = { 0, "AGUARDANDO", "--" }; // Leitura mais recente
-Leitura historico[10];      // Histórico circular com as últimas 10 leituras
-int     totalLeituras = 0;  // Contador total de leituras realizadas
-unsigned long ultimaLeitura = 0; // Timestamp do último botão pressionado (debounce)
+
+Leitura leituraAtual  = { 0, "AGUARDANDO", "--" };
+Leitura historico[10];
+int     totalLeituras = 0;
+unsigned long ultimaLeitura = 0;
 
 // ─── Timestamp ───────────────────────────────────────────────────────────────
 // Gera um horário no formato HH:MM:SS baseado no tempo de execução do ESP32
+
 String getTimestamp() {
   unsigned long s = millis() / 1000;
   unsigned long h = s / 3600;
@@ -58,6 +66,7 @@ String getTimestamp() {
 
 // ─── LCD ─────────────────────────────────────────────────────────────────────
 // Atualiza o display com o AQI atual e o status na segunda linha
+
 void atualizarLCD() {
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -70,6 +79,7 @@ void atualizarLCD() {
 // ─── LEDs e Buzzer ───────────────────────────────────────────────────────────
 // Apaga todos os LEDs e o buzzer, depois acende o LED correspondente ao nível
 // de qualidade do ar. Se ruim, ativa o buzzer também.
+
 void atualizarSaidas() {
   digitalWrite(LED_VERDE,    LOW);
   digitalWrite(LED_AMARELO,  LOW);
@@ -82,12 +92,13 @@ void atualizarSaidas() {
     digitalWrite(LED_AMARELO, HIGH);
   } else {
     digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(BUZZER, HIGH); // Alerta sonoro apenas quando ar está ruim
+    digitalWrite(BUZZER, HIGH);
   }
 }
 
 // ─── MQTT ────────────────────────────────────────────────────────────────────
 // Tenta conectar ao broker MQTT caso ainda não esteja conectado
+
 void conectarMQTT() {
   if (mqtt.connected()) return;
   Serial.print("[MQTT] Conectando...");
@@ -99,7 +110,6 @@ void conectarMQTT() {
   }
 }
 
-// Serializa a leitura atual em JSON e publica no tópico MQTT
 void publicarMQTT() {
   if (!mqtt.connected()) conectarMQTT();
 
@@ -118,12 +128,13 @@ void publicarMQTT() {
 // ─── Registro de leitura ─────────────────────────────────────────────────────
 // Atualiza o estado global, salva no histórico circular,
 // aciona saídas físicas, atualiza LCD e publica via MQTT
+
 void registrarLeitura(int aqi, const String& status) {
   leituraAtual.aqi       = aqi;
   leituraAtual.status    = status;
   leituraAtual.timestamp = getTimestamp();
 
-  historico[totalLeituras % 10] = leituraAtual; // Histórico circular (máx 10)
+  historico[totalLeituras % 10] = leituraAtual;
   totalLeituras++;
 
   atualizarSaidas();
@@ -138,6 +149,7 @@ void registrarLeitura(int aqi, const String& status) {
 
 // ─── Endpoint: GET /leitura/atual ────────────────────────────────────────────
 // Retorna a leitura mais recente em formato JSON
+
 void handleLeituraAtual() {
   StaticJsonDocument<128> doc;
   doc["aqi"]       = leituraAtual.aqi;
@@ -151,6 +163,7 @@ void handleLeituraAtual() {
 
 // ─── Endpoint: GET /historico ────────────────────────────────────────────────
 // Retorna as últimas 10 leituras e o total acumulado em formato JSON
+
 void handleHistorico() {
   DynamicJsonDocument doc(1024);
   JsonArray arr = doc.createNestedArray("leituras");
@@ -171,6 +184,7 @@ void handleHistorico() {
 
 // ─── Endpoint: GET /status ───────────────────────────────────────────────────
 // Retorna informações de saúde do dispositivo: Wi-Fi, MQTT, uptime e leituras
+
 void handleStatus() {
   StaticJsonDocument<128> doc;
   doc["dispositivo"] = "AirWatch-ESP32";
@@ -188,6 +202,7 @@ void handleStatus() {
 // Serve uma página HTML com identidade visual AirWatch que exibe
 // o AQI atual, status, última leitura e status do sistema.
 // A página faz auto-refresh a cada 5 segundos.
+
 void handleDashboard() {
   String html = R"rawhtml(
 <!DOCTYPE html>
@@ -429,21 +444,19 @@ void handleDashboard() {
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
 // Inicializa pinos, LCD, Wi-Fi, MQTT e servidor HTTP
+
 void setup() {
   Serial.begin(115200);
 
-  // Botões com pull-up interno (LOW = pressionado)
   pinMode(BTN_BOM,      INPUT_PULLUP);
   pinMode(BTN_MODERADO, INPUT_PULLUP);
   pinMode(BTN_RUIM,     INPUT_PULLUP);
 
-  // Saídas digitais
   pinMode(LED_VERDE,    OUTPUT);
   pinMode(LED_AMARELO,  OUTPUT);
   pinMode(LED_VERMELHO, OUTPUT);
   pinMode(BUZZER,       OUTPUT);
 
-  // Inicializa LCD via I2C nos pinos SDA=21, SCL=22
   Wire.begin(21, 22);
   lcd.init();
   lcd.backlight();
@@ -452,7 +465,6 @@ void setup() {
   lcd.setCursor(0, 1);
   lcd.print("Conectando...");
 
-  // Conecta ao Wi-Fi e aguarda conexão
   Serial.print("[WiFi] Conectando");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -461,7 +473,6 @@ void setup() {
   }
   Serial.println("\n[WiFi] Conectado! IP: " + WiFi.localIP().toString());
 
-  // Exibe IP no LCD por 2 segundos
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("WiFi OK!");
@@ -469,7 +480,6 @@ void setup() {
   lcd.print(WiFi.localIP().toString());
   delay(2000);
 
-  // Configura e conecta ao broker MQTT
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   conectarMQTT();
 
@@ -481,18 +491,17 @@ void setup() {
   server.begin();
   Serial.println("[HTTP] Servidor iniciado");
 
-  // Exibe estado inicial no LCD
   atualizarLCD();
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
 // Mantém o servidor HTTP e o MQTT ativos, e monitora os botões
 // com debounce de 500ms para evitar leituras duplicadas
-void loop() {
-  server.handleClient(); // Processa requisições HTTP
-  mqtt.loop();           // Mantém conexão MQTT ativa
 
-  // Debounce: ignora acionamentos dentro de 500ms
+void loop() {
+  server.handleClient();
+  mqtt.loop();
+
   if (millis() - ultimaLeitura < 500) return;
 
   if (digitalRead(BTN_BOM) == LOW) {
