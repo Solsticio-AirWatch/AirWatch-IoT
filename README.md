@@ -13,6 +13,8 @@ Diante disso, a equipe optou por uma **readequação da solução**, mantendo o 
 
 Toda a lógica de negócio foi mantida integralmente: índice AQI, alertas sonoros e visuais, dashboard HTML com identidade visual AirWatch, 3 endpoints JSON e publicação MQTT.
 
+---
+
 ## Hardware (Wokwi)
 
 | Componente         | Pino ESP32 | Função                              |
@@ -36,6 +38,8 @@ Toda a lógica de negócio foi mantida integralmente: índice AQI, alertas sonor
 - Dashboard HTML servido pelo próprio ESP32 com identidade visual AirWatch
 - Histórico circular das últimas 10 leituras em memória
 
+---
+
 ## Endpoints HTTP
 
 | Método | Rota             | Descrição                              |
@@ -44,6 +48,8 @@ Toda a lógica de negócio foi mantida integralmente: índice AQI, alertas sonor
 | GET    | `/leitura/atual` | Leitura mais recente em JSON           |
 | GET    | `/historico`     | Últimas 10 leituras em JSON            |
 | GET    | `/status`        | Status do dispositivo (Wi-Fi, MQTT...) |
+
+---
 
 ## Estrutura do Repositório
 ```
@@ -57,6 +63,18 @@ AirWatch-IoT/
 └── sketch.ino       # Código principal do firmware
 ```
 
+---
+
+## Links
+
+Acessar projeto Wokwi:
+[Clique aqui para acessar o projeto no Wokwi](https://wokwi.com/projects/465000284365707265)
+
+Acessar vídeo - YouTube:
+[Clique aqui para acessar o projeto no Wokwi]
+
+---
+
 ## Equipe
 
 | Nome                     | RM       |
@@ -67,9 +85,6 @@ AirWatch-IoT/
 
 ## Licença
 Uso acadêmico – todos os direitos reservados à equipe Solstício.
-
-## Vídeo de Demonstração
-🔗 Link do vídeo será adicionado após gravação.
 
 ---
 *Projeto desenvolvido para a Global Solution 2026/1 – FIAP*
