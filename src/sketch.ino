@@ -1,5 +1,4 @@
 // ─── Bibliotecas ─────────────────────────────────────────────────────────────
-
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <WiFi.h>
@@ -8,7 +7,6 @@
 #include <ArduinoJson.h>
 
 // ─── Pinagem ─────────────────────────────────────────────────────────────────
-
 #define BTN_BOM       12
 #define BTN_MODERADO  13
 #define BTN_RUIM      14
@@ -18,26 +16,22 @@
 #define BUZZER        32
 
 // ─── Credenciais Wi-Fi ───────────────────────────────────────────────────────
-
 const char* WIFI_SSID     = "Wokwi-GUEST";
 const char* WIFI_PASSWORD = "";
 
 // ─── Configuração MQTT ───────────────────────────────────────────────────────
-
 const char* MQTT_BROKER = "broker.hivemq.com";
 const int   MQTT_PORT   = 1883;
 const char* MQTT_TOPIC  = "airwatch/leitura";
 const char* MQTT_CLIENT = "airwatch-esp32-solsticio";
 
 // ─── Instâncias dos objetos ──────────────────────────────────────────────────
-
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 WiFiClient        wifiClient;
 PubSubClient      mqtt(wifiClient);
 WebServer         server(80);
 
 // ─── Estrutura de dados ──────────────────────────────────────────────────────
-
 struct Leitura {
   int    aqi;
   String status;
@@ -45,15 +39,13 @@ struct Leitura {
 };
 
 // ─── Estado global ───────────────────────────────────────────────────────────
-
 Leitura leituraAtual  = { 0, "AGUARDANDO", "--" };
 Leitura historico[10];
-int     totalLeituras = 0;
-unsigned long ultimaLeitura = 0;
+int     totalLeituras        = 0;
+unsigned long ultimaLeitura      = 0;
+unsigned long tempoUltimaLeitura = 0;
 
 // ─── Timestamp ───────────────────────────────────────────────────────────────
-// Gera um horário no formato HH:MM:SS baseado no tempo de execução do ESP32
-
 String getTimestamp() {
   unsigned long s = millis() / 1000;
   unsigned long h = s / 3600;
@@ -65,8 +57,6 @@ String getTimestamp() {
 }
 
 // ─── LCD ─────────────────────────────────────────────────────────────────────
-// Atualiza o display com o AQI atual e o status na segunda linha
-
 void atualizarLCD() {
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -77,28 +67,24 @@ void atualizarLCD() {
 }
 
 // ─── LEDs e Buzzer ───────────────────────────────────────────────────────────
-// Apaga todos os LEDs e o buzzer, depois acende o LED correspondente ao nível
-// de qualidade do ar. Se ruim, ativa o buzzer também.
-
 void atualizarSaidas() {
   digitalWrite(LED_VERDE,    LOW);
   digitalWrite(LED_AMARELO,  LOW);
   digitalWrite(LED_VERMELHO, LOW);
-  digitalWrite(BUZZER,       LOW);
 
   if (leituraAtual.aqi <= 50) {
     digitalWrite(LED_VERDE, HIGH);
+    noTone(BUZZER);
   } else if (leituraAtual.aqi <= 150) {
     digitalWrite(LED_AMARELO, HIGH);
+    noTone(BUZZER);
   } else {
     digitalWrite(LED_VERMELHO, HIGH);
-    digitalWrite(BUZZER, HIGH);
+    tone(BUZZER, 500, 1500);
   }
 }
 
 // ─── MQTT ────────────────────────────────────────────────────────────────────
-// Tenta conectar ao broker MQTT caso ainda não esteja conectado
-
 void conectarMQTT() {
   if (mqtt.connected()) return;
   Serial.print("[MQTT] Conectando...");
@@ -126,9 +112,6 @@ void publicarMQTT() {
 }
 
 // ─── Registro de leitura ─────────────────────────────────────────────────────
-// Atualiza o estado global, salva no histórico circular,
-// aciona saídas físicas, atualiza LCD e publica via MQTT
-
 void registrarLeitura(int aqi, const String& status) {
   leituraAtual.aqi       = aqi;
   leituraAtual.status    = status;
@@ -136,6 +119,8 @@ void registrarLeitura(int aqi, const String& status) {
 
   historico[totalLeituras % 10] = leituraAtual;
   totalLeituras++;
+
+  tempoUltimaLeitura = millis();
 
   atualizarSaidas();
   atualizarLCD();
@@ -147,9 +132,7 @@ void registrarLeitura(int aqi, const String& status) {
     leituraAtual.timestamp.c_str());
 }
 
-// ─── Endpoint: GET /leitura/atual ────────────────────────────────────────────
-// Retorna a leitura mais recente em formato JSON
-
+// ─── Endpoints HTTP ──────────────────────────────────────────────────────────
 void handleLeituraAtual() {
   StaticJsonDocument<128> doc;
   doc["aqi"]       = leituraAtual.aqi;
@@ -160,9 +143,6 @@ void handleLeituraAtual() {
   serializeJson(doc, json);
   server.send(200, "application/json", json);
 }
-
-// ─── Endpoint: GET /historico ────────────────────────────────────────────────
-// Retorna as últimas 10 leituras e o total acumulado em formato JSON
 
 void handleHistorico() {
   DynamicJsonDocument doc(1024);
@@ -182,9 +162,6 @@ void handleHistorico() {
   server.send(200, "application/json", json);
 }
 
-// ─── Endpoint: GET /status ───────────────────────────────────────────────────
-// Retorna informações de saúde do dispositivo: Wi-Fi, MQTT, uptime e leituras
-
 void handleStatus() {
   StaticJsonDocument<128> doc;
   doc["dispositivo"] = "AirWatch-ESP32";
@@ -198,11 +175,7 @@ void handleStatus() {
   server.send(200, "application/json", json);
 }
 
-// ─── Endpoint: GET / — Dashboard HTML ────────────────────────────────────────
-// Serve uma página HTML com identidade visual AirWatch que exibe
-// o AQI atual, status, última leitura e status do sistema.
-// A página faz auto-refresh a cada 5 segundos.
-
+// ─── Dashboard HTML ──────────────────────────────────────────────────────────
 void handleDashboard() {
   String html = R"rawhtml(
 <!DOCTYPE html>
@@ -214,7 +187,6 @@ void handleDashboard() {
   <title>AirWatch</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: Arial, sans-serif;
       background: #0B1320;
@@ -222,7 +194,6 @@ void handleDashboard() {
       min-height: 100vh;
       padding: 24px 16px;
     }
-
     header {
       display: flex;
       flex-direction: column;
@@ -230,23 +201,19 @@ void handleDashboard() {
       gap: 4px;
       margin-bottom: 32px;
     }
-
     .logo-title {
       font-size: 2rem;
       font-weight: 700;
       letter-spacing: 2px;
     }
-
     .logo-title span.air   { color: #F1F5F9; }
     .logo-title span.watch { color: #10B981; }
-
     .tagline {
       font-size: 0.65rem;
       letter-spacing: 3px;
       color: #22D3EE;
       text-transform: uppercase;
     }
-
     .divider {
       width: 100%;
       max-width: 480px;
@@ -254,7 +221,6 @@ void handleDashboard() {
       background: linear-gradient(90deg, transparent, #0EA5E9, #10B981, transparent);
       margin: 12px auto 0;
     }
-
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -262,7 +228,6 @@ void handleDashboard() {
       max-width: 480px;
       margin: 0 auto 16px;
     }
-
     .card {
       background: #0F1F35;
       border: 1px solid #1E3A5F;
@@ -271,7 +236,6 @@ void handleDashboard() {
       position: relative;
       overflow: hidden;
     }
-
     .card::before {
       content: '';
       position: absolute;
@@ -279,9 +243,7 @@ void handleDashboard() {
       height: 2px;
       background: linear-gradient(90deg, #0EA5E9, #10B981);
     }
-
     .card.full { grid-column: 1 / -1; }
-
     .card-label {
       font-size: 0.7rem;
       letter-spacing: 2px;
@@ -290,19 +252,16 @@ void handleDashboard() {
       margin-bottom: 10px;
       font-weight: 600;
     }
-
     .aqi-value {
       font-size: 3rem;
       font-weight: 700;
       line-height: 1;
       margin-bottom: 8px;
     }
-
     .aqi-value.BOM       { color: #10B981; }
     .aqi-value.MODERADO  { color: #F59E0B; }
     .aqi-value.RUIM      { color: #EF4444; }
     .aqi-value.AGUARDANDO { color: #475569; }
-
     .pill {
       display: inline-flex;
       align-items: center;
@@ -314,12 +273,10 @@ void handleDashboard() {
       letter-spacing: 1px;
       text-transform: uppercase;
     }
-
     .pill.BOM       { background: #064E3B; color: #10B981; border: 1px solid #10B981; }
     .pill.MODERADO  { background: #451A03; color: #F59E0B; border: 1px solid #F59E0B; }
     .pill.RUIM      { background: #450A0A; color: #EF4444; border: 1px solid #EF4444; }
     .pill.AGUARDANDO { background: #1E293B; color: #64748B; border: 1px solid #334155; }
-
     .dot {
       width: 7px; height: 7px;
       border-radius: 50%;
@@ -329,25 +286,21 @@ void handleDashboard() {
     .dot.MODERADO  { background: #F59E0B; box-shadow: 0 0 6px #F59E0B; }
     .dot.RUIM      { background: #EF4444; box-shadow: 0 0 6px #EF4444; animation: pulse 1s infinite; }
     .dot.AGUARDANDO { background: #475569; }
-
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50%       { opacity: 0.3; }
     }
-
     .info-value {
       font-size: 1.1rem;
       font-weight: 600;
       color: #CBD5E1;
       margin-top: 4px;
     }
-
     .info-sub {
       font-size: 0.72rem;
       color: #475569;
       margin-top: 6px;
     }
-
     .status-row {
       display: flex;
       align-items: center;
@@ -356,11 +309,9 @@ void handleDashboard() {
       border-bottom: 1px solid #1E3A5F;
       font-size: 0.8rem;
     }
-
     .status-row:last-child { border-bottom: none; }
     .status-row .key { color: #64748B; }
     .status-row .val { color: #22D3EE; font-weight: 600; }
-
     footer {
       text-align: center;
       color: #1E3A5F;
@@ -372,7 +323,6 @@ void handleDashboard() {
   </style>
 </head>
 <body>
-
   <header>
     <div class="logo-title">
       <span class="air">Air</span><span class="watch">Watch</span>
@@ -380,9 +330,7 @@ void handleDashboard() {
     <div class="tagline">Monitoring the Air. Protecting the Future.</div>
     <div class="divider"></div>
   </header>
-
   <div class="grid">
-
     <div class="card full">
       <div class="card-label">Índice de Qualidade do Ar (AQI)</div>
       <div class="aqi-value )rawhtml";
@@ -398,7 +346,6 @@ void handleDashboard() {
   html += leituraAtual.status;
   html += R"rawhtml(</span>
     </div>
-
     <div class="card">
       <div class="card-label">Última Leitura</div>
       <div class="info-value">)rawhtml";
@@ -406,7 +353,6 @@ void handleDashboard() {
   html += R"rawhtml(</div>
       <div class="info-sub">tempo de operação</div>
     </div>
-
     <div class="card">
       <div class="card-label">Total de Leituras</div>
       <div class="info-value">)rawhtml";
@@ -414,7 +360,6 @@ void handleDashboard() {
   html += R"rawhtml(</div>
       <div class="info-sub">registros na sessão</div>
     </div>
-
     <div class="card full">
       <div class="card-label">Status do Sistema</div>
       <div class="status-row">
@@ -430,28 +375,21 @@ void handleDashboard() {
         <span class="val">CONECTADO</span>
       </div>
     </div>
-
   </div>
-
   <footer>Atualiza a cada 5s &nbsp;·&nbsp; Solstício &nbsp;·&nbsp; FIAP 2026</footer>
-
 </body>
 </html>
 )rawhtml";
-
   server.send(200, "text/html", html);
 }
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
-// Inicializa pinos, LCD, Wi-Fi, MQTT e servidor HTTP
-
 void setup() {
   Serial.begin(115200);
 
   pinMode(BTN_BOM,      INPUT_PULLUP);
   pinMode(BTN_MODERADO, INPUT_PULLUP);
   pinMode(BTN_RUIM,     INPUT_PULLUP);
-
   pinMode(LED_VERDE,    OUTPUT);
   pinMode(LED_AMARELO,  OUTPUT);
   pinMode(LED_VERMELHO, OUTPUT);
@@ -461,9 +399,9 @@ void setup() {
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
-  lcd.print("AirWatch v1.0");
+  lcd.print("AirWatch IoT");
   lcd.setCursor(0, 1);
-  lcd.print("Conectando...");
+  lcd.print("Iniciando...");
 
   Serial.print("[WiFi] Conectando");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -478,12 +416,11 @@ void setup() {
   lcd.print("WiFi OK!");
   lcd.setCursor(0, 1);
   lcd.print(WiFi.localIP().toString());
-  delay(2000);
+  delay(1000);
 
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   conectarMQTT();
 
-  // Registra os endpoints HTTP
   server.on("/",              handleDashboard);
   server.on("/leitura/atual", handleLeituraAtual);
   server.on("/historico",     handleHistorico);
@@ -495,12 +432,18 @@ void setup() {
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
-// Mantém o servidor HTTP e o MQTT ativos, e monitora os botões
-// com debounce de 500ms para evitar leituras duplicadas
-
 void loop() {
   server.handleClient();
   mqtt.loop();
+
+  if (tempoUltimaLeitura > 0 && millis() - tempoUltimaLeitura > 15000) {
+    tempoUltimaLeitura = 0;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("AirWatch IoT");
+    lcd.setCursor(0, 1);
+    lcd.print("Aguardando...");
+  }
 
   if (millis() - ultimaLeitura < 500) return;
 
