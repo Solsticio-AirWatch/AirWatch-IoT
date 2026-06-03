@@ -26,7 +26,7 @@ const char* MQTT_TOPIC  = "airwatch/leitura";
 const char* MQTT_CLIENT = "airwatch-esp32-solsticio";
 
 // ─── Configuração API ────────────────────────────────────────────────────────
-const char* API_URL = "https://airwatch-api.onrender.com/leitura";
+const char* API_URL = "https://airwatch-iot.onrender.com/leitura";
 
 // ─── Instâncias dos objetos ──────────────────────────────────────────────────
 LiquidCrystal_I2C lcd(0x27, 16, 2);
