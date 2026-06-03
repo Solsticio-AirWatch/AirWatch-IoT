@@ -3,7 +3,7 @@ Módulo de Internet das Coisas do projeto AirWatch.
 
 ## Sobre o Projeto
 
-O AirWatch IoT é uma estação de monitoramento de qualidade do ar simulada no Wokwi, utilizando um ESP32 como microcontrolador central. O sistema permite injetar leituras de qualidade do ar via botões físicos, exibindo o índice AQI em tempo real no LCD e nos LEDs indicadores — além de publicar os dados via MQTT e enviá-los para uma API REST hospedada no Render.
+O AirWatch IoT é uma estação de monitoramento de qualidade do ar simulada no Wokwi, utilizando um ESP32 como microcontrolador central. O sistema permite injetar leituras de qualidade do ar via botões físicos, exibindo o índice AQI em tempo real no LCD e nos LEDs indicadores. Além de publicar os dados via MQTT e enviá-los para uma API REST hospedada no Render.
 
 ## Solução Implementada
 
@@ -34,6 +34,10 @@ Diante disso, a equipe optou por uma **readequação da solução**, mantendo o 
 - Envio de dados via HTTP POST para API REST no Render
 - Dashboard HTML com identidade visual AirWatch
 - Histórico das últimas 10 leituras em memória
+
+## Link (Wokwi) do projeto
+
+[Clique aqui para direcionar ao projeto no Wokwi](https://wokwi.com/projects/465000284365707265)
 
 ## API REST
 
