@@ -87,7 +87,7 @@ AirWatch-IoT/
 Uso acadêmico – todos os direitos reservados à equipe Solstício.
 
 ## Vídeo de Demonstração
-[Clique aqui para acessar o vídeo demonstrativo](https://youtu.be/E5DOAUSc0YE)
+[Clique aqui para acessar o vídeo demonstrativo](https://youtu.be/E5DOAUSc0YE?si=uycYUoxfHvMGqHdX)
 
 ---
 *Projeto desenvolvido para a Global Solution 2026/1 – FIAP*
